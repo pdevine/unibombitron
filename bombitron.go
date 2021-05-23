@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 	"math/rand"
 
@@ -18,6 +19,7 @@ var gameGrid *Grid
 const (
 	TILE_WIDTH = 8
 	TILE_HEIGHT = 8
+	HEADER_OFFSET = 10
 )
 
 const tileEmpty = `BBBBBBBB
@@ -180,7 +182,37 @@ type Grid struct {
 	Height         int
 	Tiles          []*Tile
 	TotalBombs     int
-	FlagsRemaining int
+	FlagsRemaining *FlagsRemainingText
+}
+
+type FlagsRemainingText struct {
+	sprite.BaseSprite
+	font      *sprite.Font
+	Remaining int
+}
+
+func NewFlagsRemaining() *FlagsRemainingText {
+	f := &FlagsRemainingText{BaseSprite: sprite.BaseSprite{
+		X: 4,
+		Y: 1,
+		Visible: false},
+		font:      sprite.NewPakuFont(),
+		Remaining: 0,
+	}
+	f.Init()
+
+	f.RegisterEvent("ShowFlagsRemaining", func() {
+		f.Visible = true
+		f.UpdateText()
+	})
+
+	return f
+}
+
+func (f *FlagsRemainingText) UpdateText() {
+	s := fmt.Sprintf("%d", f.Remaining)
+	surf := sprite.NewSurfaceFromString(f.font.BuildString(s), true)
+	f.BlockCostumes = []*sprite.Surface{&surf}
 }
 
 func NewTile() *Tile {
@@ -213,14 +245,16 @@ func (t *Tile) SetFlag() {
 	}
 
 	if t.HaveFlag {
-		gameGrid.FlagsRemaining += 1
+		gameGrid.FlagsRemaining.Remaining += 1
 		t.HaveFlag = false
 		t.SetTile(TILE_COVERED)
+		allSprites.TriggerEvent("ShowFlagsRemaining")
 	} else {
-		if gameGrid.FlagsRemaining > 0 {
-			gameGrid.FlagsRemaining -= 1
+		if gameGrid.FlagsRemaining.Remaining > 0 {
+			gameGrid.FlagsRemaining.Remaining -= 1
 			t.HaveFlag = true
 			t.SetTile(TILE_FLAG)
+			allSprites.TriggerEvent("ShowFlagsRemaining")
 		}
 	}
 }
@@ -246,7 +280,12 @@ func (t *Tile) SetTile(v TileType) {
 }
 
 func NewGrid() *Grid {
-	return &Grid{State: GAME_INIT}
+	g := &Grid{
+		State:          GAME_INIT,
+		FlagsRemaining: NewFlagsRemaining(),
+	}
+	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
+	return g
 }
 
 func (g *Grid) SetSize(w, h, totalBombs int) {
@@ -257,7 +296,8 @@ func (g *Grid) SetSize(w, h, totalBombs int) {
 	g.Width = w
 	g.Height = h
 	g.TotalBombs = totalBombs
-	g.FlagsRemaining = totalBombs
+	g.FlagsRemaining.Remaining = totalBombs
+	allSprites.TriggerEvent("ShowFlagsRemaining")
 
 	g.Tiles = make([]*Tile, 0, 0)
 
@@ -265,7 +305,7 @@ func (g *Grid) SetSize(w, h, totalBombs int) {
 		for cntX := 0; cntX < w; cntX++ {
 			t := NewTile()
 			t.X = cntX * 8
-			t.Y = cntY * 8
+			t.Y = (cntY * 8) + HEADER_OFFSET
 			g.Tiles = append(g.Tiles, t)
 			allSprites.Sprites = append(allSprites.Sprites, t)
 		}
@@ -274,12 +314,12 @@ func (g *Grid) SetSize(w, h, totalBombs int) {
 }
 
 func (g *Grid) FindTileClicked(x, y int) *Tile {
-	if (x*2) >= (g.Width*8) || (y*2) >= (g.Height*8) {
+	if (x*2) >= (g.Width*8) || (y*2)-HEADER_OFFSET >= (g.Height*8) {
 		return nil
 	}
 
 	xPos := x*2 / TILE_WIDTH
-	yPos := y*2 / TILE_HEIGHT
+	yPos := ((y*2)-HEADER_OFFSET) / TILE_HEIGHT
 
 	return g.Tiles[xPos + yPos*g.Width]
 }
@@ -507,8 +547,8 @@ mainloop:
 				allSprites.Background = tm.Color187
 				allSprites.TriggerEvent("resizeScreen")
 
-				totalBombs := Width/8 * Height/8 / 10
-				gameGrid.SetSize(Width/8, Height/8, totalBombs)
+				totalBombs := Width/8 * (Height-HEADER_OFFSET)/8 / 10
+				gameGrid.SetSize(Width/8, (Height-HEADER_OFFSET)/8, totalBombs)
 			}
 		default:
 			allSprites.Update()
