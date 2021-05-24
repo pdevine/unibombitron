@@ -183,12 +183,20 @@ type Grid struct {
 	Tiles          []*Tile
 	TotalBombs     int
 	FlagsRemaining *FlagsRemainingText
+	TimerElapsed   *TimerElapsedText
 }
 
 type FlagsRemainingText struct {
 	sprite.BaseSprite
 	font      *sprite.Font
 	Remaining int
+}
+
+type TimerElapsedText struct {
+	sprite.BaseSprite
+	font      *sprite.Font
+	Started   bool
+	StartTime time.Time
 }
 
 func NewFlagsRemaining() *FlagsRemainingText {
@@ -213,6 +221,44 @@ func (f *FlagsRemainingText) UpdateText() {
 	s := fmt.Sprintf("%d", f.Remaining)
 	surf := sprite.NewSurfaceFromString(f.font.BuildString(s), true)
 	f.BlockCostumes = []*sprite.Surface{&surf}
+}
+
+func NewTimerElapsed() *TimerElapsedText {
+	t := &TimerElapsedText{BaseSprite: sprite.BaseSprite{
+		X: 20,
+		Y: 1,
+		Visible: false},
+		font:  sprite.NewPakuFont(),
+	}
+	t.Init()
+
+	t.RegisterEvent("StartTimer", func() {
+		t.Visible = true
+		t.Started = true
+		t.StartTime = time.Now()
+	})
+
+	t.RegisterEvent("UpdateTimer", func() {
+		t.UpdateText()
+	})
+
+	t.RegisterEvent("Explode", func() {
+		t.Started = false
+	})
+
+	t.RegisterEvent("GameOver", func() {
+		t.Started = false
+	})
+
+	return t
+}
+
+func (t *TimerElapsedText) UpdateText() {
+	if t.Started {
+		s := fmt.Sprintf("%d", int(time.Since(t.StartTime).Seconds()))
+		surf := sprite.NewSurfaceFromString(t.font.BuildString(s), true)
+		t.BlockCostumes = []*sprite.Surface{&surf}
+	}
 }
 
 func NewTile() *Tile {
@@ -283,9 +329,22 @@ func NewGrid() *Grid {
 	g := &Grid{
 		State:          GAME_INIT,
 		FlagsRemaining: NewFlagsRemaining(),
+		TimerElapsed:   NewTimerElapsed(),
 	}
 	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
+	allSprites.Sprites = append(allSprites.Sprites, g.TimerElapsed)
 	return g
+}
+
+func (g *Grid) CheckGameOver() bool {
+
+	for _, t := range g.Tiles {
+		if t.Covered && !t.HaveFlag {
+			return false
+		}
+	}
+	allSprites.TriggerEvent("GameOver")
+	return true
 }
 
 func (g *Grid) SetSize(w, h, totalBombs int) {
@@ -346,6 +405,7 @@ func (g *Grid) PlaceBombs(firstTile *Tile) {
 	}
 
 	g.State = GAME_RUNNING
+	allSprites.TriggerEvent("StartTimer")
 }
 
 func (g *Grid) FindSurroundingBombs(pos int) {
@@ -505,6 +565,20 @@ func main() {
 		}
 	}()
 
+	ticker := time.NewTicker(500 * time.Millisecond)
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <- done:
+				return
+			case <-ticker.C:
+				allSprites.TriggerEvent("UpdateTimer")
+			}
+		}
+	}()
+
 mainloop:
 	for {
 		tm.Clear(tm.Color187, tm.Color187)
@@ -527,6 +601,7 @@ mainloop:
 						pos := gameGrid.GetTilePos(t)
 						gameGrid.PlaceBombs(t)
 						gameGrid.RevealTileAtPos(pos)
+						gameGrid.CheckGameOver()
 					}
 				} else if ev.Key == tm.MouseRight {
 					if gameGrid.State != GAME_RUNNING {
@@ -537,6 +612,7 @@ mainloop:
 					t := gameGrid.FindTileClicked(ev.MouseX, ev.MouseY)
 					if t != nil && t.Covered {
 						t.SetFlag()
+						gameGrid.CheckGameOver()
 					}
 				}
 
