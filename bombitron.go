@@ -184,6 +184,7 @@ type Grid struct {
 	TotalBombs     int
 	FlagsRemaining *FlagsRemainingText
 	TimerElapsed   *TimerElapsedText
+	Super          *SuperText
 }
 
 type FlagsRemainingText struct {
@@ -197,6 +198,10 @@ type TimerElapsedText struct {
 	font      *sprite.Font
 	Started   bool
 	StartTime time.Time
+}
+
+type SuperText struct {
+	sprite.BaseSprite
 }
 
 func NewFlagsRemaining() *FlagsRemainingText {
@@ -260,6 +265,28 @@ func (t *TimerElapsedText) UpdateText() {
 		t.BlockCostumes = []*sprite.Surface{&surf}
 	}
 }
+
+func NewSuperText() *SuperText {
+	s := &SuperText{BaseSprite: sprite.BaseSprite{
+		Visible: false},
+	}
+	s.Init()
+
+	surf := sprite.NewSurfaceFromPng("super.png")
+	s.BlockCostumes = append(s.BlockCostumes, &surf)
+
+	s.RegisterEvent("resizeScreen", func() {
+		s.X = Width/2 - surf.Width/2
+		s.Y = Height/2 - surf.Height/2
+	})
+
+	s.RegisterEvent("GameWon", func() {
+		s.Visible = true
+	})
+
+	return s
+}
+
 
 func NewTile() *Tile {
 	t := &Tile{BaseSprite: sprite.BaseSprite{
@@ -330,9 +357,11 @@ func NewGrid() *Grid {
 		State:          GAME_INIT,
 		FlagsRemaining: NewFlagsRemaining(),
 		TimerElapsed:   NewTimerElapsed(),
+		Super:          NewSuperText(),
 	}
 	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
 	allSprites.Sprites = append(allSprites.Sprites, g.TimerElapsed)
+	allSprites.Sprites = append(allSprites.Sprites, g.Super)
 	return g
 }
 
@@ -343,6 +372,10 @@ func (g *Grid) CheckGameOver() bool {
 			return false
 		}
 	}
+	allSprites.Remove(g.Super)
+	allSprites.Sprites = append(allSprites.Sprites, g.Super)
+
+	allSprites.TriggerEvent("GameWon")
 	allSprites.TriggerEvent("GameOver")
 	return true
 }

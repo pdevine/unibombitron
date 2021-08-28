@@ -8,6 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o bom
 
 FROM scratch
 COPY --from=0 /project/bombitron /bombitron
+COPY super.png .
 ENV COLORTERM="truecolor"
 ENV TERM="xterm-256color"
 CMD ["/bombitron"]
