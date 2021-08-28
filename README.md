@@ -1,5 +1,7 @@
 # Uni-bombitron
 
+[![buildx](https://github.com/pdevine/unibombitron/actions/workflows/main.yml/badge.svg)](https://github.com/pdevine/unibombitron/actions/workflows/main.yml)
+
 Run on kubernetes:
 
 `kubectl run -it --rm --image=ghcr.io/pdevine/bombitron bombitron`
