@@ -176,6 +176,10 @@ type Tile struct {
 	Covered   bool
 }
 
+type Background struct {
+	sprite.BaseSprite
+}
+
 type Grid struct {
 	State          GameState
 	Width          int
@@ -185,6 +189,8 @@ type Grid struct {
 	FlagsRemaining *FlagsRemainingText
 	TimerElapsed   *TimerElapsedText
 	Super          *SuperText
+	Background     *Background
+	Kaboom         *Kaboom
 }
 
 type FlagsRemainingText struct {
@@ -202,6 +208,13 @@ type TimerElapsedText struct {
 
 type SuperText struct {
 	sprite.BaseSprite
+}
+
+type Kaboom struct {
+	sprite.BaseSprite
+	Timer      int
+	TimeOut    int
+	TimeOutVis int
 }
 
 func NewFlagsRemaining() *FlagsRemainingText {
@@ -263,6 +276,7 @@ func (t *TimerElapsedText) UpdateText() {
 		s := fmt.Sprintf("%d", int(time.Since(t.StartTime).Seconds()))
 		surf := sprite.NewSurfaceFromString(t.font.BuildString(s), true)
 		t.BlockCostumes = []*sprite.Surface{&surf}
+		t.X = Width - surf.Width - 4
 	}
 }
 
@@ -272,7 +286,7 @@ func NewSuperText() *SuperText {
 	}
 	s.Init()
 
-	surf := sprite.NewSurfaceFromPng("super.png")
+	surf := sprite.NewSurfaceFromPng("super.png", true)
 	s.BlockCostumes = append(s.BlockCostumes, &surf)
 
 	s.RegisterEvent("resizeScreen", func() {
@@ -281,12 +295,74 @@ func NewSuperText() *SuperText {
 	})
 
 	s.RegisterEvent("GameWon", func() {
+		allSprites.MoveToTop(s)
 		s.Visible = true
 	})
 
 	return s
 }
 
+func NewKaboom() *Kaboom {
+	k := &Kaboom{BaseSprite: sprite.BaseSprite{
+		Visible: false},
+		TimeOut:    10,
+		TimeOutVis: 50,
+	}
+	k.Init()
+
+	surf1 := sprite.NewSurfaceFromPng("ka.png", true)
+	k.BlockCostumes = append(k.BlockCostumes, &surf1)
+	surf2 := sprite.NewSurfaceFromPng("kaboom.png", true)
+	k.BlockCostumes = append(k.BlockCostumes, &surf2)
+
+	k.RegisterEvent("Explode", func() {
+		allSprites.MoveToTop(k)
+		k.Visible = true
+	})
+
+	k.RegisterEvent("resizeScreen", func() {
+		k.X = Width/2 - surf1.Width/2
+		k.Y = Height/2 - surf1.Height/2
+	})
+
+	return k
+}
+
+func (k *Kaboom) Update() {
+	if !k.Visible {
+		return
+	}
+	k.Timer++
+
+	if k.Timer > k.TimeOut {
+		if k.CurrentCostume < len(k.BlockCostumes)-1 {
+			k.NextCostume()
+		}
+	}
+	if k.Timer > k.TimeOutVis {
+		k.Visible = false
+	}
+}
+
+func NewBackground() *Background {
+	b := &Background{BaseSprite: sprite.BaseSprite{
+		Visible: true},
+	}
+	b.Init()
+
+	b.RegisterEvent("resizeScreen", func() {
+		surf := sprite.NewSurface(Width, Height, true)
+		x0 := gameGrid.Width*TILE_WIDTH
+		y0 := HEADER_OFFSET
+		x1 := gameGrid.Width*TILE_WIDTH
+		y1 := gameGrid.Height*TILE_HEIGHT + HEADER_OFFSET
+		surf.Line(x0, y0, x1, y1, 'X')
+		surf.Line(0, y1, x1, y1, 'X')
+		b.BlockCostumes = []*sprite.Surface{&surf}
+	})
+
+	return b
+}
 
 func NewTile() *Tile {
 	t := &Tile{BaseSprite: sprite.BaseSprite{
@@ -358,23 +434,23 @@ func NewGrid() *Grid {
 		FlagsRemaining: NewFlagsRemaining(),
 		TimerElapsed:   NewTimerElapsed(),
 		Super:          NewSuperText(),
+		Background:     NewBackground(),
+		Kaboom:         NewKaboom(),
 	}
 	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
 	allSprites.Sprites = append(allSprites.Sprites, g.TimerElapsed)
 	allSprites.Sprites = append(allSprites.Sprites, g.Super)
+	allSprites.Sprites = append(allSprites.Sprites, g.Kaboom)
+	allSprites.Sprites = append(allSprites.Sprites, g.Background)
 	return g
 }
 
 func (g *Grid) CheckGameOver() bool {
-
 	for _, t := range g.Tiles {
 		if t.Covered && !t.HaveFlag {
 			return false
 		}
 	}
-	allSprites.Remove(g.Super)
-	allSprites.Sprites = append(allSprites.Sprites, g.Super)
-
 	allSprites.TriggerEvent("GameWon")
 	allSprites.TriggerEvent("GameOver")
 	return true
@@ -588,8 +664,6 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	gameGrid = NewGrid()
-	//t := NewTitle()
-	//allSprites.Sprites = append(allSprites.Sprites, t)
 
 	eventQueue := make(chan tm.Event)
 	go func() {
@@ -621,9 +695,6 @@ mainloop:
 			if ev.Type == tm.EventKey {
 				if ev.Key == tm.KeyCtrlC || ev.Key == tm.KeyEsc || ev.Ch == 'q' {
 					break mainloop
-				}
-				if ev.Key == tm.KeyArrowUp {
-				} else if ev.Key == tm.KeyArrowDown {
 				}
 			} else if ev.Type == tm.EventMouse {
 				if ev.Key == tm.MouseLeft {
