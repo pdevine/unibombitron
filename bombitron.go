@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"time"
+	"math"
 	"math/rand"
 
 	sprite "github.com/pdevine/go-asciisprite"
@@ -170,6 +171,8 @@ type Tile struct {
 	sprite.BaseSprite
 	GridX     int
 	GridY     int
+	VX        int
+	VY        int
 	BombCount int
 	HaveBomb  bool
 	HaveFlag  bool
@@ -208,6 +211,8 @@ type TimerElapsedText struct {
 
 type SuperText struct {
 	sprite.BaseSprite
+	TargetY int
+	VY      float64
 }
 
 type Kaboom struct {
@@ -291,7 +296,8 @@ func NewSuperText() *SuperText {
 
 	s.RegisterEvent("resizeScreen", func() {
 		s.X = Width/2 - surf.Width/2
-		s.Y = Height/2 - surf.Height/2
+		s.Y = -s.Height
+		s.TargetY = Height/2 - surf.Height/2
 	})
 
 	s.RegisterEvent("GameWon", func() {
@@ -300,6 +306,15 @@ func NewSuperText() *SuperText {
 	})
 
 	return s
+}
+
+func (s *SuperText) Update() {
+	if !s.Visible || s.Y == s.TargetY {
+		return
+	}
+
+	s.VY = (float64(s.TargetY) - float64(s.Y)) * 0.3
+	s.Y += int(math.Round(s.VY))
 }
 
 func NewKaboom() *Kaboom {
@@ -371,8 +386,29 @@ func NewTile() *Tile {
 	}
 	t.Init()
 
+	t.RegisterEvent("GameWon", func() {
+		t.VX, t.VY = randVec()
+	})
+
 	t.SetTile(TILE_COVERED)
 	return t
+}
+
+func randVec() (int, int) {
+	var x, y int
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	n := r.Intn(2)
+	x = 1
+	if n == 0 {
+		x = -1
+	}
+
+	n = r.Intn(2)
+	y = 1
+	if n == 0 {
+		y = -1
+	}
+	return x, y
 }
 
 func (t *Tile) RevealTile() {
@@ -428,6 +464,27 @@ func (t *Tile) SetTile(v TileType) {
 	t.BlockCostumes = []*sprite.Surface{&surf}
 }
 
+func (t *Tile) Update() {
+	if gameGrid.State != GAME_OVER {
+		return
+	}
+
+	t.X += t.VX
+	t.Y += t.VY
+
+	if t.X < 0 {
+		t.VX = 1
+	} else if t.X > Width-t.Width {
+		t.VX = -1
+	}
+
+	if t.Y < 0 {
+		t.VY = 1
+	} else if t.Y > Height-t.Height {
+		t.VY = -1
+	}
+}
+
 func NewGrid() *Grid {
 	g := &Grid{
 		State:          GAME_INIT,
@@ -437,11 +494,13 @@ func NewGrid() *Grid {
 		Background:     NewBackground(),
 		Kaboom:         NewKaboom(),
 	}
+
 	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
 	allSprites.Sprites = append(allSprites.Sprites, g.TimerElapsed)
 	allSprites.Sprites = append(allSprites.Sprites, g.Super)
 	allSprites.Sprites = append(allSprites.Sprites, g.Kaboom)
 	allSprites.Sprites = append(allSprites.Sprites, g.Background)
+
 	return g
 }
 
@@ -451,6 +510,7 @@ func (g *Grid) CheckGameOver() bool {
 			return false
 		}
 	}
+	g.State = GAME_OVER
 	allSprites.TriggerEvent("GameWon")
 	allSprites.TriggerEvent("GameOver")
 	return true
@@ -482,7 +542,7 @@ func (g *Grid) SetSize(w, h, totalBombs int) {
 }
 
 func (g *Grid) FindTileClicked(x, y int) *Tile {
-	if (x*2) >= (g.Width*8) || (y*2)-HEADER_OFFSET >= (g.Height*8) {
+	if (x*2) >= (g.Width*8) || (y*2)-HEADER_OFFSET >= (g.Height*8) || (y*2) < HEADER_OFFSET {
 		return nil
 	}
 
@@ -697,29 +757,29 @@ mainloop:
 					break mainloop
 				}
 			} else if ev.Type == tm.EventMouse {
+				MouseX = ev.MouseX
+				MouseY = ev.MouseY
 				if ev.Key == tm.MouseLeft {
-					MouseX = ev.MouseX
-					MouseY = ev.MouseY
-					t := gameGrid.FindTileClicked(ev.MouseX, ev.MouseY)
-					if t != nil {
-						pos := gameGrid.GetTilePos(t)
-						gameGrid.PlaceBombs(t)
-						gameGrid.RevealTileAtPos(pos)
-						gameGrid.CheckGameOver()
+					if gameGrid.State == GAME_RUNNING || gameGrid.State == GAME_STARTED {
+						t := gameGrid.FindTileClicked(MouseX, MouseY)
+						if t != nil {
+							pos := gameGrid.GetTilePos(t)
+							if gameGrid.State == GAME_STARTED {
+								gameGrid.PlaceBombs(t)
+							}
+							gameGrid.RevealTileAtPos(pos)
+							gameGrid.CheckGameOver()
+						}
 					}
 				} else if ev.Key == tm.MouseRight {
-					if gameGrid.State != GAME_RUNNING {
-						continue
-					}
-					MouseX = ev.MouseX
-					MouseY = ev.MouseY
-					t := gameGrid.FindTileClicked(ev.MouseX, ev.MouseY)
-					if t != nil && t.Covered {
-						t.SetFlag()
-						gameGrid.CheckGameOver()
+					if gameGrid.State == GAME_RUNNING {
+						t := gameGrid.FindTileClicked(MouseX, MouseY)
+						if t != nil && t.Covered {
+							t.SetFlag()
+							gameGrid.CheckGameOver()
+						}
 					}
 				}
-
 			} else if ev.Type == tm.EventResize {
 				Width = ev.Width*2
 				Height = ev.Height*2
@@ -737,4 +797,3 @@ mainloop:
 		}
 	}
 }
-
