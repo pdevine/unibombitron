@@ -24,112 +24,112 @@ const (
 )
 
 const tileEmpty = `BBBBBBBB
-B
-B
-B
-B
-B
-B
-B`
+Bxxxxxxx
+Bxxxxxxx
+Bxxxxxxx
+Bxxxxxxx
+Bxxxxxxx
+Bxxxxxxx
+Bxxxxxxx`
 
 const tileCovered = `wwwwwwww
-w
-w      G
-w      G
-w      G
-w      G
-w      G
-w GGGGGG`
+wxxxxxxx
+wxxxxxxG
+wxxxxxxG
+wxxxxxxG
+wxxxxxxG
+wxxxxxxG
+wxGGGGGG`
 
 const tileCoveredReverse = `GGGGGGGG
-G
-G      w
-G      w
-G      w
-G      w
-G      w
-G wwwwww`
+Gxxxxxxx
+Gxxxxxxw
+Gxxxxxxw
+Gxxxxxxw
+Gxxxxxxw
+Gxxxxxxw
+Gxwwwwww`
 
 const tileFlag = `wwwwwwww
-w       
-w    r G
-w  rrr G
-w rrrr G
-w   rB G
-w    B G
-w      G`
+wxxxxxxx
+wxxxxrxG
+wxxrrrxG
+wxrrrrxG
+wxxxrBxG
+wxxxxBxG
+wxxxxxxG`
 
 const tile1 = `BBBBBBBB
-B    
-B   b
-B  bb
-B   b
-B   b
-B  bbb
-B`
+Bxxxxxxx
+Bxxxbxxx
+Bxxbbxxx
+Bxxxbxxx
+Bxxxbxxx
+Bxxbbbxx
+Bxxxxxxx`
 
 const tile2 = `BBBBBBBB
-B
-B  gg
-B    g
-B  ggg
-B  g
-B  ggg
-B`
+Bxxxxxxx
+Bxxggxxx
+Bxxxxgxx
+Bxxgggxx
+Bxxgxxxx
+Bxxgggxx
+Bxxxxxxx`
 
 const tile3 = `BBBBBBBB
-B
-B  rr
-B    r
-B  rr
-B    r
-B  rrr
-B`
+Bxxxxxxx
+Bxxrrxxx
+Bxxxxrxx
+Bxxrrxxx
+Bxxxxrxx
+Bxxrrrxx
+Bxxxxxxx`
 
 const tile4 = `BBBBBBBB
-B
-B  B B
-B  B B
-B  BBB
-B    B
-B    B
-B`
+Bxxxxxxx
+BxxBxBxx
+BxxBxBxx
+BxxBBBxx
+BxxxxBxx
+BxxxxBxx
+Bxxxxxxx`
 
 const tile5 = `BBBBBBBB
-B
-B  BBB
-B  B
-B  BB
-B    B
-B  BB
-B`
+Bxxxxxxx
+BxxBBBxx
+BxxBxxxx
+BxxBBxxx
+BxxxxBxx
+BxxBBxxx
+Bxxxxxxx`
 
 const tile6 = `BBBBBBBB
-B
-B   BB
-B  B
-B  BBB
-B  B B
-B  BB
-B`
+Bxxxxxxx
+BxxxBBxx
+BxxBxxxx
+BxxBBBxx
+BxxBxBxx
+BxxBBxxx
+Bxxxxxxx`
 
 const tile7 = `BBBBBBBB
-B
-B  BBB
-B    B
-B   B
-B  B
-B  B
-B`
+Bxxxxxxx
+BxxBBBxx
+BxxxxBxx
+BxxxBxxx
+BxxBxxxx
+BxxBxxxx
+Bxxxxxxx`
 
 const tile8 = `BBBBBBBB
-B
-B   BB
-B  B B
-B  BBB
-B  B B
-B  BB
-B`
+Bxxxxxxx
+BxxxBBxx
+BxxBxBxx
+BxxBBBxx
+BxxBxBxx
+BxxBBxxx
+Bxxxxxxx`
 
 const tileBomb = `BBBBBBBB
 BRRRRRRR
@@ -387,7 +387,9 @@ func NewTile() *Tile {
 	t.Init()
 
 	t.RegisterEvent("GameWon", func() {
-		t.VX, t.VY = randVec()
+		if t.HaveFlag == true {
+			t.VX, t.VY = randVec()
+		}
 	})
 
 	t.RegisterEvent("ReturnToGrid", func() {
@@ -713,6 +715,7 @@ func setPalette() {
 	sprite.ColorMap['G'] = tm.ColorGray
 	sprite.ColorMap['X'] = tm.ColorBlack
 	sprite.ColorMap['b'] = tm.ColorBlue
+	sprite.ColorMap['x'] = tm.Color187
 }
 
 func main() {
@@ -776,6 +779,7 @@ mainloop:
 							pos := gameGrid.GetTilePos(t)
 							if gameGrid.State == GAME_STARTED {
 								gameGrid.PlaceBombs(t)
+								allSprites.MoveToTop(gameGrid.Super)
 							}
 							gameGrid.RevealTileAtPos(pos)
 							gameGrid.CheckGameOver()
