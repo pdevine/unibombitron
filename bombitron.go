@@ -390,6 +390,13 @@ func NewTile() *Tile {
 		t.VX, t.VY = randVec()
 	})
 
+	t.RegisterEvent("ReturnToGrid", func() {
+		t.VX = 0
+		t.VY = 0
+		t.X = t.GridX
+		t.Y = t.GridY
+	})
+
 	t.SetTile(TILE_COVERED)
 	return t
 }
@@ -417,6 +424,7 @@ func (t *Tile) RevealTile() {
 	} else if t.HaveBomb {
 		t.SetTile(TILE_BOMB)
 		allSprites.TriggerEvent("Explode")
+		allSprites.TriggerEvent("GameOver")
 		gameGrid.State = GAME_OVER
 		return
 	}
@@ -534,6 +542,8 @@ func (g *Grid) SetSize(w, h, totalBombs int) {
 			t := NewTile()
 			t.X = cntX * 8
 			t.Y = (cntY * 8) + HEADER_OFFSET
+			t.GridX = t.X
+			t.GridY = t.Y
 			g.Tiles = append(g.Tiles, t)
 			allSprites.Sprites = append(allSprites.Sprites, t)
 		}
@@ -770,6 +780,8 @@ mainloop:
 							gameGrid.RevealTileAtPos(pos)
 							gameGrid.CheckGameOver()
 						}
+					} else if gameGrid.State == GAME_OVER {
+						allSprites.TriggerEvent("ReturnToGrid")
 					}
 				} else if ev.Key == tm.MouseRight {
 					if gameGrid.State == GAME_RUNNING {
