@@ -11,4 +11,4 @@ COPY --from=0 /project/bombitron /bombitron
 COPY *.png ./
 ENV COLORTERM="truecolor"
 ENV TERM="xterm-256color"
-CMD ["/bombitron"]
+ENTRYPOINT ["/bombitron"]

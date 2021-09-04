@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	"time"
 	"math"
 	"math/rand"
@@ -10,17 +11,22 @@ import (
 	tm "github.com/pdevine/go-asciisprite/termbox"
 )
 
-var allSprites sprite.SpriteGroup
-var Width int
-var Height int
-var MouseX int
-var MouseY int
-var gameGrid *Grid
+var (
+	allSprites sprite.SpriteGroup
+	Width int
+	Height int
+	MouseX int
+	MouseY int
+	gameGrid *Grid
+)
 
 const (
 	TILE_WIDTH = 8
 	TILE_HEIGHT = 8
 	HEADER_OFFSET = 10
+	EASY_BOMB_RATE float64 = 0.12345
+	MEDIUM_BOMB_RATE float64 = 0.15625
+	HARD_BOMB_RATE float64 = 0.20625
 )
 
 const tileEmpty = `BBBBBBBB
@@ -185,6 +191,7 @@ type Background struct {
 
 type Grid struct {
 	State          GameState
+	BombRate       float64
 	Width          int
 	Height         int
 	Tiles          []*Tile
@@ -495,9 +502,10 @@ func (t *Tile) Update() {
 	}
 }
 
-func NewGrid() *Grid {
+func NewGrid(bombRate float64) *Grid {
 	g := &Grid{
 		State:          GAME_INIT,
+		BombRate:       bombRate,
 		FlagsRemaining: NewFlagsRemaining(),
 		TimerElapsed:   NewTimerElapsed(),
 		Super:          NewSuperText(),
@@ -526,15 +534,15 @@ func (g *Grid) CheckGameOver() bool {
 	return true
 }
 
-func (g *Grid) SetSize(w, h, totalBombs int) {
+func (g *Grid) SetSize(w, h int) {
 	if g.State != GAME_INIT {
 		return
 	}
 
 	g.Width = w
 	g.Height = h
-	g.TotalBombs = totalBombs
-	g.FlagsRemaining.Remaining = totalBombs
+	g.TotalBombs = int(math.Round(float64(w)*float64(h)*g.BombRate))
+	g.FlagsRemaining.Remaining = g.TotalBombs
 	allSprites.TriggerEvent("ShowFlagsRemaining")
 
 	g.Tiles = make([]*Tile, 0, 0)
@@ -718,7 +726,25 @@ func setPalette() {
 	sprite.ColorMap['x'] = tm.Color187
 }
 
+func getBombRate() float64 {
+	easy := flag.Bool("easy", false, "Set easy mode")
+	medium := flag.Bool("medium", false, "Set intermediate mode")
+	hard := flag.Bool("hard", false, "Set hard mode")
+	flag.Parse()
+
+	if *hard == true {
+		return HARD_BOMB_RATE
+	} else if *medium == true {
+		return MEDIUM_BOMB_RATE
+	} else if *easy == true {
+		return EASY_BOMB_RATE
+	}
+	return EASY_BOMB_RATE
+}
+
 func main() {
+	bombRate := getBombRate()
+
 	err := tm.Init()
 	if err != nil {
 		panic(err)
@@ -736,7 +762,7 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	gameGrid = NewGrid()
+	gameGrid = NewGrid(bombRate)
 
 	eventQueue := make(chan tm.Event)
 	go func() {
@@ -803,8 +829,7 @@ mainloop:
 				allSprites.Background = tm.Color187
 				allSprites.TriggerEvent("resizeScreen")
 
-				totalBombs := Width/8 * (Height-HEADER_OFFSET)/8 / 10
-				gameGrid.SetSize(Width/8, (Height-HEADER_OFFSET)/8, totalBombs)
+				gameGrid.SetSize(Width/8, (Height-HEADER_OFFSET)/8)
 			}
 		default:
 			allSprites.Update()
