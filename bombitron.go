@@ -65,6 +65,15 @@ wxxxrBxG
 wxxxxBxG
 wxxxxxxG`
 
+const tileQuestion = `wwwwwwww
+wxxxxxxx
+wxxBBBxG
+wxBxxBxG
+wxxxBxxG
+wxxxxxxG
+wxxxBxxG
+wxxxxxxG`
+
 const tile1 = `BBBBBBBB
 Bxxxxxxx
 Bxxxbxxx
@@ -164,6 +173,7 @@ const (
 	TILE_COVERED_REVERSE
 	TILE_FLAG
 	TILE_BOMB
+	TILE_QUESTION
 )
 
 const (
@@ -175,14 +185,15 @@ const (
 
 type Tile struct {
 	sprite.BaseSprite
-	GridX     int
-	GridY     int
-	VX        int
-	VY        int
-	BombCount int
-	HaveBomb  bool
-	HaveFlag  bool
-	Covered   bool
+	GridX        int
+	GridY        int
+	VX           int
+	VY           int
+	BombCount    int
+	HaveBomb     bool
+	HaveFlag     bool
+	HaveQuestion bool
+	Covered      bool
 }
 
 type Background struct {
@@ -428,7 +439,7 @@ func randVec() (int, int) {
 }
 
 func (t *Tile) RevealTile() {
-	if t.HaveFlag {
+	if t.HaveFlag || t.HaveQuestion {
 		return
 	} else if t.HaveBomb {
 		t.SetTile(TILE_BOMB)
@@ -449,8 +460,12 @@ func (t *Tile) SetFlag() {
 	if t.HaveFlag {
 		gameGrid.FlagsRemaining.Remaining += 1
 		t.HaveFlag = false
-		t.SetTile(TILE_COVERED)
+		t.HaveQuestion = true
+		t.SetTile(TILE_QUESTION)
 		allSprites.TriggerEvent("ShowFlagsRemaining")
+	} else if t.HaveQuestion {
+		t.HaveQuestion = false
+		t.SetTile(TILE_COVERED)
 	} else {
 		if gameGrid.FlagsRemaining.Remaining > 0 {
 			gameGrid.FlagsRemaining.Remaining -= 1
@@ -476,6 +491,7 @@ func (t *Tile) SetTile(v TileType) {
 		tileCoveredReverse,
 		tileFlag,
 		tileBomb,
+		tileQuestion,
 	}
 	surf := sprite.NewSurfaceFromString(tileImages[v], false)
 	t.BlockCostumes = []*sprite.Surface{&surf}
