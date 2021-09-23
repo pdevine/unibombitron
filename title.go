@@ -1,76 +1,117 @@
 package main
 
 import (
+	"math"
+
 	sprite "github.com/pdevine/go-asciisprite"
 )
 
-/*
-const titleText = `
-
-XXXXXXX          XXXXXXXXX   XXXXXXX   XX  XXXXXXX XXXXXXX    XXXXXX   XXXXXX
-XXXXXXX          XXXXXXXXX   XXXXXXX   XX  XXXXXXX XXXXXXX    XXXXXX   XXXXXX
-      XX         XX      XX        XX      XX            XX  XX    XX  XX    XX
-      XX         XX      XX        XX      XX            XX  XX    XX  XX    XX
-XXXXXXX          XX  XX  XX  XXXXXXX   XX  XX      XXXXXXX   XX    XX  XX    XX
-XXXXXXX          XX  XX  XX  XXXXXXX   XX  XX      XXXXXXX   XX    XX  XX    XX
-XX    XX         XX  XX  XX  XX    XX  XX  XX            XX  XX    XX  XX    XX
-XX    XX         XX  XX  XX  XX    XX  XX  XX            XX  XX    XX  XX    XX
-XXXXXXX          XX  XX  XX  XXXXXXX   Xx   XX           XX   XXXXXX   XX    XX
-XXXXXXX          XX  XX  XX  XXXXXXX   XX    XX          XX   XXXXXX   XX    XX
-`
-*/
-
-const titleText = `
-
-XXXXXXXXXXX
-XXXXXXXXXXXX
-XXXXXXXXXXXXX
-          XXXX
-           XXX
-          XXXX
-XXXXXXXXXXXX
-XXXXXXXXXXXXX
-XXXX      XXXX
-XXXX       XXX
-XXXX      XXXX
-XXXXXXXXXXXX
-XXXXXXXXXXX
-`
-
-const bigBombText = `
-
-       XXXXXXX       
-     XXXXXXXXXXX     
-   XXXXXXXXXXXXXXX   
-  XXXXXXXXXXXXXXXXX  
- XXXXXXXXXXXXXXXXXXX 
-XXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXX
- XXXXXXXXXXXXXXXXXXX 
-  XXXXXXXXXXXXXXXXX  
-   XXXXXXXXXXXXXXX   
-     XXXXXXXXXXX     
-       XXXXXXX       
-
-
-
-`
-
-
-type Title struct {
-	sprite.BaseSprite
+type TitleOverlay struct {
+	Selectors []*Selector
 }
 
-func NewTitle() *Title {
-	t := &Title{BaseSprite: sprite.BaseSprite{
-		X:       5,
-		Y:       11,
-		Visible: true},
+type Selector struct {
+	sprite.BaseSprite
+	Type     string
+	TargetX  int
+	TargetY  int
+	VX       float64
+	VY       float64
+	BombRate float64
+}
+
+func NewTitleOverlay() *TitleOverlay {
+	t := &TitleOverlay{
+		Selectors: []*Selector{
+			NewSelector("easy"),
+			NewSelector("med."),
+			NewSelector("hard"),
+		},
 	}
 
-	//surf := sprite.NewSurfaceFromString(titleText, true)
-	surf := sprite.NewSurfaceFromString(bigBombText, true)
-	t.BlockCostumes = []*sprite.Surface{&surf}
+	for _, s := range t.Selectors {
+		allSprites.Sprites = append(allSprites.Sprites, s)
+	}
 
 	return t
+}
+
+func (t *TitleOverlay) MoveToTop() {
+	for _, s := range t.Selectors {
+		allSprites.MoveToTop(s)
+	}
+}
+
+func (t *TitleOverlay) CheckSelectorClicked(x, y int) *Selector {
+	for _, s := range t.Selectors {
+		if s.HitAtPointSurface(x, y) {
+			return s
+		}
+	}
+	return nil
+}
+
+func NewSelector(n string) *Selector {
+	s := &Selector{BaseSprite: sprite.BaseSprite{
+		Y:       Height - 20,
+		Visible: true},
+		Type: n,
+	}
+	s.Init()
+
+	f := sprite.NewPakuFont()
+	w := sprite.NewSurfaceFromString(f.BuildString(n), false)
+
+	surf := sprite.NewSurface(40, 10, false)
+	for rcnt, r := range surf.Blocks {
+		for ccnt, _ := range r {
+			surf.Blocks[rcnt][ccnt] = 'w'
+		}
+	}
+	surf.Rectangle(1, 1, 39, 9, 'X')
+	surf.Blit(w, surf.Width/2-w.Width/2, 2)
+	s.BlockCostumes = []*sprite.Surface{&surf}
+	s.SetCostume(0)
+
+	if n == "easy" {
+		s.TargetX = 10
+		s.X = -surf.Width
+		s.BombRate = EASY_BOMB_RATE
+	} else if n == "med." {
+		s.X = Width/2 - surf.Width/2
+		s.Y = Height + 10
+		s.TargetY = Height - 21
+		s.BombRate = MEDIUM_BOMB_RATE
+	} else if n == "hard" {
+		s.TargetX = Width - surf.Width - 10
+		s.X = Width
+		s.BombRate = HARD_BOMB_RATE
+	}
+
+	s.RegisterEvent("SelectorClicked", func() {
+		s.Visible = false
+	})
+
+	return s
+}
+
+func (s *Selector) Update() {
+	if !s.Visible {
+		return
+	}
+
+	if s.Type == "easy" || s.Type == "hard" {
+		if s.TargetX == s.X {
+			return
+		}
+		s.VX = (float64(s.TargetX) - float64(s.X)) * 0.3
+		s.X += int(math.Round(s.VX))
+	} else {
+		if s.TargetY == s.Y {
+			return
+		}
+		s.VY = (float64(s.TargetY) - float64(s.Y)) * 0.3
+		s.Y += int(math.Round(s.VY))
+	}
+
 }

@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"flag"
-	"time"
 	"math"
 	"math/rand"
+	"time"
 
 	sprite "github.com/pdevine/go-asciisprite"
 	tm "github.com/pdevine/go-asciisprite/termbox"
@@ -13,148 +12,21 @@ import (
 
 var (
 	allSprites sprite.SpriteGroup
-	Width int
-	Height int
-	MouseX int
-	MouseY int
-	gameGrid *Grid
+	Width      int
+	Height     int
+	MouseX     int
+	MouseY     int
+	gameGrid   *Grid
 )
 
 const (
-	TILE_WIDTH = 8
-	TILE_HEIGHT = 8
-	HEADER_OFFSET = 10
-	EASY_BOMB_RATE float64 = 0.12345
+	TILE_WIDTH               = 8
+	TILE_HEIGHT              = 8
+	HEADER_OFFSET            = 10
+	EASY_BOMB_RATE   float64 = 0.12345
 	MEDIUM_BOMB_RATE float64 = 0.15625
-	HARD_BOMB_RATE float64 = 0.20625
+	HARD_BOMB_RATE   float64 = 0.20625
 )
-
-const tileEmpty = `BBBBBBBB
-Bxxxxxxx
-Bxxxxxxx
-Bxxxxxxx
-Bxxxxxxx
-Bxxxxxxx
-Bxxxxxxx
-Bxxxxxxx`
-
-const tileCovered = `wwwwwwww
-wxxxxxxx
-wxxxxxxG
-wxxxxxxG
-wxxxxxxG
-wxxxxxxG
-wxxxxxxG
-wxGGGGGG`
-
-const tileCoveredReverse = `GGGGGGGG
-Gxxxxxxx
-Gxxxxxxw
-Gxxxxxxw
-Gxxxxxxw
-Gxxxxxxw
-Gxxxxxxw
-Gxwwwwww`
-
-const tileFlag = `wwwwwwww
-wxxxxxxx
-wxxxxrxG
-wxxrrrxG
-wxrrrrxG
-wxxxrBxG
-wxxxxBxG
-wxxxxxxG`
-
-const tileQuestion = `wwwwwwww
-wxxxxxxx
-wxxBBBxG
-wxBxxBxG
-wxxxBxxG
-wxxxxxxG
-wxxxBxxG
-wxxxxxxG`
-
-const tile1 = `BBBBBBBB
-Bxxxxxxx
-Bxxxbxxx
-Bxxbbxxx
-Bxxxbxxx
-Bxxxbxxx
-Bxxbbbxx
-Bxxxxxxx`
-
-const tile2 = `BBBBBBBB
-Bxxxxxxx
-Bxxggxxx
-Bxxxxgxx
-Bxxgggxx
-Bxxgxxxx
-Bxxgggxx
-Bxxxxxxx`
-
-const tile3 = `BBBBBBBB
-Bxxxxxxx
-Bxxrrxxx
-Bxxxxrxx
-Bxxrrxxx
-Bxxxxrxx
-Bxxrrrxx
-Bxxxxxxx`
-
-const tile4 = `BBBBBBBB
-Bxxxxxxx
-BxxBxBxx
-BxxBxBxx
-BxxBBBxx
-BxxxxBxx
-BxxxxBxx
-Bxxxxxxx`
-
-const tile5 = `BBBBBBBB
-Bxxxxxxx
-BxxBBBxx
-BxxBxxxx
-BxxBBxxx
-BxxxxBxx
-BxxBBxxx
-Bxxxxxxx`
-
-const tile6 = `BBBBBBBB
-Bxxxxxxx
-BxxxBBxx
-BxxBxxxx
-BxxBBBxx
-BxxBxBxx
-BxxBBxxx
-Bxxxxxxx`
-
-const tile7 = `BBBBBBBB
-Bxxxxxxx
-BxxBBBxx
-BxxxxBxx
-BxxxBxxx
-BxxBxxxx
-BxxBxxxx
-Bxxxxxxx`
-
-const tile8 = `BBBBBBBB
-Bxxxxxxx
-BxxxBBxx
-BxxBxBxx
-BxxBBBxx
-BxxBxBxx
-BxxBBxxx
-Bxxxxxxx`
-
-const tileBomb = `BBBBBBBB
-BRRRRRRR
-BRRRBRRR
-BRRBBBRR
-BRBBBBBR
-BRBBBBBR
-BRRBBBRR
-BRRRBRRR
-BRRRRRRR`
 
 type TileType int
 type GameState int
@@ -242,8 +114,8 @@ type Kaboom struct {
 
 func NewFlagsRemaining() *FlagsRemainingText {
 	f := &FlagsRemainingText{BaseSprite: sprite.BaseSprite{
-		X: 4,
-		Y: 1,
+		X:       4,
+		Y:       1,
 		Visible: false},
 		font:      sprite.NewPakuFont(),
 		Remaining: 0,
@@ -266,10 +138,10 @@ func (f *FlagsRemainingText) UpdateText() {
 
 func NewTimerElapsed() *TimerElapsedText {
 	t := &TimerElapsedText{BaseSprite: sprite.BaseSprite{
-		X: 20,
-		Y: 1,
+		X:       20,
+		Y:       1,
 		Visible: false},
-		font:  sprite.NewPakuFont(),
+		font: sprite.NewPakuFont(),
 	}
 	t.Init()
 
@@ -385,9 +257,9 @@ func NewBackground() *Background {
 
 	b.RegisterEvent("resizeScreen", func() {
 		surf := sprite.NewSurface(Width, Height, true)
-		x0 := gameGrid.Width*TILE_WIDTH
+		x0 := gameGrid.Width * TILE_WIDTH
 		y0 := HEADER_OFFSET
-		x1 := gameGrid.Width*TILE_WIDTH
+		x1 := gameGrid.Width * TILE_WIDTH
 		y1 := gameGrid.Height*TILE_HEIGHT + HEADER_OFFSET
 		surf.Line(x0, y0, x1, y1, 'X')
 		surf.Line(0, y1, x1, y1, 'X')
@@ -518,10 +390,9 @@ func (t *Tile) Update() {
 	}
 }
 
-func NewGrid(bombRate float64) *Grid {
+func NewGrid() *Grid {
 	g := &Grid{
 		State:          GAME_INIT,
-		BombRate:       bombRate,
 		FlagsRemaining: NewFlagsRemaining(),
 		TimerElapsed:   NewTimerElapsed(),
 		Super:          NewSuperText(),
@@ -557,9 +428,7 @@ func (g *Grid) SetSize(w, h int) {
 
 	g.Width = w
 	g.Height = h
-	g.TotalBombs = int(math.Round(float64(w)*float64(h)*g.BombRate))
-	g.FlagsRemaining.Remaining = g.TotalBombs
-	allSprites.TriggerEvent("ShowFlagsRemaining")
+	//g.TotalBombs = int(math.Round(float64(w) * float64(h) * g.BombRate))
 
 	g.Tiles = make([]*Tile, 0, 0)
 
@@ -574,24 +443,27 @@ func (g *Grid) SetSize(w, h int) {
 			allSprites.Sprites = append(allSprites.Sprites, t)
 		}
 	}
-	g.State = GAME_STARTED
+	//g.State = GAME_STARTED
 }
 
 func (g *Grid) FindTileClicked(x, y int) *Tile {
-	if (x*2) >= (g.Width*8) || (y*2)-HEADER_OFFSET >= (g.Height*8) || (y*2) < HEADER_OFFSET {
+	if x >= (g.Width*8) || y-HEADER_OFFSET >= (g.Height*8) || y < HEADER_OFFSET {
 		return nil
 	}
 
-	xPos := x*2 / TILE_WIDTH
-	yPos := ((y*2)-HEADER_OFFSET) / TILE_HEIGHT
+	xPos := x / TILE_WIDTH
+	yPos := (y - HEADER_OFFSET) / TILE_HEIGHT
 
-	return g.Tiles[xPos + yPos*g.Width]
+	return g.Tiles[xPos+yPos*g.Width]
 }
 
 func (g *Grid) PlaceBombs(firstTile *Tile) {
 	if g.State != GAME_STARTED {
 		return
 	}
+
+	g.FlagsRemaining.Remaining = g.TotalBombs
+	allSprites.TriggerEvent("ShowFlagsRemaining")
 
 	var cnt int
 
@@ -645,7 +517,7 @@ func (g *Grid) GetTileAtPos(r, c int) *Tile {
 		return nil
 	}
 
-	return g.Tiles[r * g.Width + c]
+	return g.Tiles[r*g.Width+c]
 }
 
 func (g *Grid) RevealTileAtPos(pos int) {
@@ -671,21 +543,21 @@ func (g *Grid) RevealTileAtPos(pos int) {
 }
 
 func (g *Grid) Up(pos int) int {
-	if pos - g.Width > -1 {
+	if pos-g.Width > -1 {
 		return pos - g.Width
 	}
 	return -1
 }
 
 func (g *Grid) Down(pos int) int {
-	if pos + g.Width >= len(g.Tiles) {
+	if pos+g.Width >= len(g.Tiles) {
 		return -1
 	}
 	return pos + g.Width
 }
 
 func (g *Grid) Left(pos int) int {
-	if pos % g.Width == 0 {
+	if pos%g.Width == 0 {
 		return -1
 	}
 	return pos - 1
@@ -742,25 +614,7 @@ func setPalette() {
 	sprite.ColorMap['x'] = tm.Color187
 }
 
-func getBombRate() float64 {
-	easy := flag.Bool("easy", false, "Set easy mode")
-	medium := flag.Bool("medium", false, "Set intermediate mode")
-	hard := flag.Bool("hard", false, "Set hard mode")
-	flag.Parse()
-
-	if *hard == true {
-		return HARD_BOMB_RATE
-	} else if *medium == true {
-		return MEDIUM_BOMB_RATE
-	} else if *easy == true {
-		return EASY_BOMB_RATE
-	}
-	return EASY_BOMB_RATE
-}
-
 func main() {
-	bombRate := getBombRate()
-
 	err := tm.Init()
 	if err != nil {
 		panic(err)
@@ -768,8 +622,8 @@ func main() {
 	defer tm.Close()
 
 	w, h := tm.Size()
-	Width = w*2
-	Height = h*2
+	Width = w * 2
+	Height = h * 2
 
 	setPalette()
 
@@ -778,7 +632,8 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	gameGrid = NewGrid(bombRate)
+	gameGrid = NewGrid()
+	titleOverlay := NewTitleOverlay()
 
 	eventQueue := make(chan tm.Event)
 	go func() {
@@ -793,7 +648,7 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <- done:
+			case <-done:
 				return
 			case <-ticker.C:
 				allSprites.TriggerEvent("UpdateTimer")
@@ -812,10 +667,17 @@ mainloop:
 					break mainloop
 				}
 			} else if ev.Type == tm.EventMouse {
-				MouseX = ev.MouseX
-				MouseY = ev.MouseY
+				MouseX = ev.MouseX * 2
+				MouseY = ev.MouseY * 2
 				if ev.Key == tm.MouseLeft {
-					if gameGrid.State == GAME_RUNNING || gameGrid.State == GAME_STARTED {
+					if gameGrid.State == GAME_INIT {
+						s := titleOverlay.CheckSelectorClicked(MouseX, MouseY)
+						if s != nil {
+							gameGrid.TotalBombs = int(math.Round(float64(gameGrid.Width) * float64(gameGrid.Height) * s.BombRate))
+							gameGrid.State = GAME_STARTED
+							allSprites.TriggerEvent("SelectorClicked")
+						}
+					} else if gameGrid.State == GAME_RUNNING || gameGrid.State == GAME_STARTED {
 						t := gameGrid.FindTileClicked(MouseX, MouseY)
 						if t != nil {
 							pos := gameGrid.GetTilePos(t)
@@ -839,13 +701,14 @@ mainloop:
 					}
 				}
 			} else if ev.Type == tm.EventResize {
-				Width = ev.Width*2
-				Height = ev.Height*2
+				Width = ev.Width * 2
+				Height = ev.Height * 2
 				allSprites.Init(Width, Height, true)
 				allSprites.Background = tm.Color187
 				allSprites.TriggerEvent("resizeScreen")
 
 				gameGrid.SetSize(Width/8, (Height-HEADER_OFFSET)/8)
+				titleOverlay.MoveToTop()
 			}
 		default:
 			allSprites.Update()
