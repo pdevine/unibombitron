@@ -701,6 +701,9 @@ mainloop:
 					}
 				}
 			} else if ev.Type == tm.EventResize {
+				if ev.Width == 0 || ev.Height == 0 {
+					continue
+				}
 				Width = ev.Width * 2
 				Height = ev.Height * 2
 				allSprites.Init(Width, Height, true)

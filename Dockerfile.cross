@@ -1,13 +1,12 @@
-FROM --platform=$BUILDPLATFORM golang:1.15.3-alpine3.12 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.17-alpine3.14 AS builder
 WORKDIR /project
-COPY bombitron.go .
+COPY *.go ./
 COPY go.* ./
-RUN apk add --no-cache git
 RUN go mod tidy
 ARG TARGETOS
 ARG TARGETARCH
 ENV GOOS=$TARGETOS GOARCH=$TARGETARCH
-RUN CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bombitron bombitron.go
+RUN CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bombitron *.go
 
 FROM scratch AS release-linux
 COPY --from=builder /project/bombitron /bombitron

@@ -73,20 +73,24 @@ func NewSelector(n string) *Selector {
 	s.BlockCostumes = []*sprite.Surface{&surf}
 	s.SetCostume(0)
 
-	if n == "easy" {
-		s.TargetX = 10
-		s.X = -surf.Width
-		s.BombRate = EASY_BOMB_RATE
-	} else if n == "med." {
-		s.X = Width/2 - surf.Width/2
-		s.Y = Height + 10
-		s.TargetY = Height - 21
-		s.BombRate = MEDIUM_BOMB_RATE
-	} else if n == "hard" {
-		s.TargetX = Width - surf.Width - 10
-		s.X = Width
-		s.BombRate = HARD_BOMB_RATE
-	}
+	s.RegisterEvent("resizeScreen", func() {
+		if n == "easy" {
+			s.TargetX = 10
+			s.X = -surf.Width
+			s.Y = Height - 20
+			s.BombRate = EASY_BOMB_RATE
+		} else if n == "med." {
+			s.X = Width/2 - surf.Width/2
+			s.Y = Height + 10
+			s.TargetY = Height - 21
+			s.BombRate = MEDIUM_BOMB_RATE
+		} else if n == "hard" {
+			s.TargetX = Width - surf.Width - 10
+			s.X = Width
+			s.Y = Height - 20
+			s.BombRate = HARD_BOMB_RATE
+		}
+	})
 
 	s.RegisterEvent("SelectorClicked", func() {
 		s.Visible = false
