@@ -8,6 +8,11 @@ import (
 
 type TitleOverlay struct {
 	Selectors []*Selector
+	Logo      *TitleLogo
+}
+
+type TitleLogo struct {
+	sprite.BaseSprite
 }
 
 type Selector struct {
@@ -29,6 +34,9 @@ func NewTitleOverlay() *TitleOverlay {
 		},
 	}
 
+	t.Logo = NewTitleLogo()
+	allSprites.Sprites = append(allSprites.Sprites, t.Logo)
+
 	for _, s := range t.Selectors {
 		allSprites.Sprites = append(allSprites.Sprites, s)
 	}
@@ -37,6 +45,7 @@ func NewTitleOverlay() *TitleOverlay {
 }
 
 func (t *TitleOverlay) MoveToTop() {
+	allSprites.MoveToTop(t.Logo)
 	for _, s := range t.Selectors {
 		allSprites.MoveToTop(s)
 	}
@@ -118,4 +127,24 @@ func (s *Selector) Update() {
 		s.Y += int(math.Round(s.VY))
 	}
 
+}
+
+func NewTitleLogo() *TitleLogo {
+	t := &TitleLogo{BaseSprite: sprite.BaseSprite{
+		Visible: true},
+	}
+	t.Init()
+
+	surf := sprite.NewSurfaceFromPng("title.png", true)
+	t.BlockCostumes = append(t.BlockCostumes, &surf)
+
+	t.RegisterEvent("resizeScreen", func() {
+		t.X = Width/2 - surf.Width/2
+	})
+
+	t.RegisterEvent("SelectorClicked", func() {
+		t.Visible = false
+	})
+
+	return t
 }

@@ -367,6 +367,7 @@ func (t *Tile) SetTile(v TileType) {
 	}
 	surf := sprite.NewSurfaceFromString(tileImages[v], false)
 	t.BlockCostumes = []*sprite.Surface{&surf}
+	t.SetCostume(0)
 }
 
 func (t *Tile) Update() {
