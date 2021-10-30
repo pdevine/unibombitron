@@ -7,16 +7,6 @@ import (
 	"time"
 
 	sprite "github.com/pdevine/go-asciisprite"
-	tm "github.com/pdevine/go-asciisprite/termbox"
-)
-
-var (
-	allSprites sprite.SpriteGroup
-	Width      int
-	Height     int
-	MouseX     int
-	MouseY     int
-	gameGrid   *Grid
 )
 
 const (
@@ -29,7 +19,6 @@ const (
 )
 
 type TileType int
-type GameState int
 
 const (
 	TILE_EMPTY = iota
@@ -46,13 +35,6 @@ const (
 	TILE_FLAG
 	TILE_BOMB
 	TILE_QUESTION
-)
-
-const (
-	GAME_INIT = iota
-	GAME_STARTED
-	GAME_RUNNING
-	GAME_OVER
 )
 
 type Tile struct {
@@ -400,14 +382,20 @@ func NewGrid() *Grid {
 		Background:     NewBackground(),
 		Kaboom:         NewKaboom(),
 	}
+	return g
+}
+
+func (g *Grid) SetReady() {
+	if g.State != GAME_INIT {
+		return
+	}
 
 	allSprites.Sprites = append(allSprites.Sprites, g.FlagsRemaining)
 	allSprites.Sprites = append(allSprites.Sprites, g.TimerElapsed)
 	allSprites.Sprites = append(allSprites.Sprites, g.Super)
 	allSprites.Sprites = append(allSprites.Sprites, g.Kaboom)
 	allSprites.Sprites = append(allSprites.Sprites, g.Background)
-
-	return g
+	g.State = GAME_READY
 }
 
 func (g *Grid) CheckGameOver() bool {
@@ -423,16 +411,16 @@ func (g *Grid) CheckGameOver() bool {
 }
 
 func (g *Grid) SetSize(w, h int) {
-	if g.State != GAME_INIT {
+	if g.State != GAME_READY {
 		return
 	}
 
 	g.Width = w
 	g.Height = h
-	//g.TotalBombs = int(math.Round(float64(w) * float64(h) * g.BombRate))
 
 	g.Tiles = make([]*Tile, 0, 0)
 
+	// Add the tiles
 	for cntY := 0; cntY < h; cntY++ {
 		for cntX := 0; cntX < w; cntX++ {
 			t := NewTile()
@@ -444,7 +432,6 @@ func (g *Grid) SetSize(w, h int) {
 			allSprites.Sprites = append(allSprites.Sprites, t)
 		}
 	}
-	//g.State = GAME_STARTED
 }
 
 func (g *Grid) FindTileClicked(x, y int) *Tile {
@@ -597,127 +584,4 @@ func (g *Grid) DownRight(pos int) int {
 		return -1
 	}
 	return pos + g.Width + 1
-}
-
-func setPalette() {
-	sprite.ColorMap['o'] = tm.Color214
-	sprite.ColorMap['y'] = tm.Color228
-	sprite.ColorMap['r'] = tm.Color197
-	sprite.ColorMap['d'] = tm.Color52
-	sprite.ColorMap['B'] = tm.ColorBlack
-	sprite.ColorMap['w'] = tm.ColorWhite
-	sprite.ColorMap['t'] = tm.Color173
-	sprite.ColorMap['T'] = tm.Color130
-	sprite.ColorMap['g'] = tm.ColorSilver
-	sprite.ColorMap['G'] = tm.ColorGray
-	sprite.ColorMap['X'] = tm.ColorBlack
-	sprite.ColorMap['b'] = tm.ColorBlue
-	sprite.ColorMap['x'] = tm.Color187
-}
-
-func main() {
-	err := tm.Init()
-	if err != nil {
-		panic(err)
-	}
-	defer tm.Close()
-
-	w, h := tm.Size()
-	Width = w * 2
-	Height = h * 2
-
-	setPalette()
-
-	allSprites.Init(Width, Height, true)
-	allSprites.Background = tm.Color187
-
-	rand.Seed(time.Now().UnixNano())
-
-	gameGrid = NewGrid()
-	titleOverlay := NewTitleOverlay()
-
-	eventQueue := make(chan tm.Event)
-	go func() {
-		for {
-			eventQueue <- tm.PollEvent()
-		}
-	}()
-
-	ticker := time.NewTicker(500 * time.Millisecond)
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				allSprites.TriggerEvent("UpdateTimer")
-			}
-		}
-	}()
-
-mainloop:
-	for {
-		tm.Clear(tm.Color187, tm.Color187)
-
-		select {
-		case ev := <-eventQueue:
-			if ev.Type == tm.EventKey {
-				if ev.Key == tm.KeyCtrlC || ev.Key == tm.KeyEsc || ev.Ch == 'q' {
-					break mainloop
-				}
-			} else if ev.Type == tm.EventMouse {
-				MouseX = ev.MouseX * 2
-				MouseY = ev.MouseY * 2
-				if ev.Key == tm.MouseLeft {
-					if gameGrid.State == GAME_INIT {
-						s := titleOverlay.CheckSelectorClicked(MouseX, MouseY)
-						if s != nil {
-							gameGrid.TotalBombs = int(math.Round(float64(gameGrid.Width) * float64(gameGrid.Height) * s.BombRate))
-							gameGrid.State = GAME_STARTED
-							allSprites.TriggerEvent("SelectorClicked")
-						}
-					} else if gameGrid.State == GAME_RUNNING || gameGrid.State == GAME_STARTED {
-						t := gameGrid.FindTileClicked(MouseX, MouseY)
-						if t != nil {
-							pos := gameGrid.GetTilePos(t)
-							if gameGrid.State == GAME_STARTED {
-								gameGrid.PlaceBombs(t)
-								allSprites.MoveToTop(gameGrid.Super)
-							}
-							gameGrid.RevealTileAtPos(pos)
-							gameGrid.CheckGameOver()
-						}
-					} else if gameGrid.State == GAME_OVER {
-						allSprites.TriggerEvent("ReturnToGrid")
-					}
-				} else if ev.Key == tm.MouseRight {
-					if gameGrid.State == GAME_RUNNING {
-						t := gameGrid.FindTileClicked(MouseX, MouseY)
-						if t != nil && t.Covered {
-							t.SetFlag()
-							gameGrid.CheckGameOver()
-						}
-					}
-				}
-			} else if ev.Type == tm.EventResize {
-				if ev.Width == 0 || ev.Height == 0 {
-					continue
-				}
-				Width = ev.Width * 2
-				Height = ev.Height * 2
-				allSprites.Init(Width, Height, true)
-				allSprites.Background = tm.Color187
-				allSprites.TriggerEvent("resizeScreen")
-
-				gameGrid.SetSize(Width/8, (Height-HEADER_OFFSET)/8)
-				titleOverlay.MoveToTop()
-			}
-		default:
-			allSprites.Update()
-			allSprites.Render()
-			time.Sleep(60 * time.Millisecond)
-		}
-	}
 }

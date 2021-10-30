@@ -2,6 +2,8 @@
 
 [![buildx](https://github.com/pdevine/unibombitron/actions/workflows/main.yml/badge.svg)](https://github.com/pdevine/unibombitron/actions/workflows/main.yml)
 
+A Minesweeper clone, built to work in your terminal.
+
 Run on kubernetes:
 
 `kubectl run -it --rm --image=ghcr.io/pdevine/bombitron bombitron`
@@ -10,6 +12,8 @@ Run on docker:
 
 `docker run -it --rm ghcr.io/pdevine/bombitron`
 
+You can size the playing field by re-sizing your terminal. The `Easy`, `Medium`, and `Hard` variants
+use the same bomb ratios as the classic Microsoft Windows 95 and Windows XP versions.
 
 ## Building the image manually
 
@@ -44,4 +48,3 @@ To build a single image in Linux:
 
 Q: Why does this look like crap on my Mac?<br>
 A: Use iTerm2 instead of macOS's built-in Terminal app. Terminal screws up all of the line spacing.
-

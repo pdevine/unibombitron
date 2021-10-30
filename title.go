@@ -17,6 +17,10 @@ type TitleLogo struct {
 	sprite.BaseSprite
 }
 
+type AdjustText struct {
+	sprite.BaseSprite
+}
+
 type Selector struct {
 	sprite.BaseSprite
 	Type     string
@@ -44,15 +48,22 @@ type TitleBomb struct {
 }
 
 func NewTitleOverlay() *TitleOverlay {
-	t := &TitleOverlay{
-		Selectors: []*Selector{
-			NewSelector("easy"),
-			NewSelector("med."),
-			NewSelector("hard"),
-		},
-		Logo:   NewTitleLogo(),
-		Bomb:   NewTitleBomb(),
+	t := &TitleOverlay{}
+
+	adjText := NewAdjustText()
+	allSprites.Sprites = append(allSprites.Sprites, adjText)
+
+	return t
+}
+
+func (t *TitleOverlay) SetGameReady() {
+	t.Selectors = []*Selector{
+		NewSelector("easy"),
+		NewSelector("med."),
+		NewSelector("hard"),
 	}
+	t.Logo = NewTitleLogo()
+	t.Bomb =  NewTitleBomb()
 
 	allSprites.Sprites = append(allSprites.Sprites, t.Logo)
 	allSprites.Sprites = append(allSprites.Sprites, t.Bomb)
@@ -60,8 +71,6 @@ func NewTitleOverlay() *TitleOverlay {
 	for _, s := range t.Selectors {
 		allSprites.Sprites = append(allSprites.Sprites, s)
 	}
-
-	return t
 }
 
 func (t *TitleOverlay) MoveToTop() {
@@ -106,24 +115,22 @@ func NewSelector(n string) *Selector {
 	s.BlockCostumes = []*sprite.Surface{&surf}
 	s.SetCostume(0)
 
-	s.RegisterEvent("resizeScreen", func() {
-		if n == "easy" {
-			s.TargetX = 10
-			s.X = -surf.Width
-			s.Y = Height - 20
-			s.BombRate = EASY_BOMB_RATE
-		} else if n == "med." {
-			s.X = Width/2 - surf.Width/2
-			s.Y = Height + 10
-			s.TargetY = Height - 21
-			s.BombRate = MEDIUM_BOMB_RATE
-		} else if n == "hard" {
-			s.TargetX = Width - surf.Width - 10
-			s.X = Width
-			s.Y = Height - 20
-			s.BombRate = HARD_BOMB_RATE
-		}
-	})
+	if n == "easy" {
+		s.TargetX = 10
+		s.X = -surf.Width
+		s.Y = Height - 20
+		s.BombRate = EASY_BOMB_RATE
+	} else if n == "med." {
+		s.X = Width/2 - surf.Width/2
+		s.Y = Height + 10
+		s.TargetY = Height - 21
+		s.BombRate = MEDIUM_BOMB_RATE
+	} else if n == "hard" {
+		s.TargetX = Width - surf.Width - 10
+		s.X = Width
+		s.Y = Height - 20
+		s.BombRate = HARD_BOMB_RATE
+	}
 
 	s.RegisterEvent("SelectorClicked", func() {
 		s.Visible = false
@@ -160,11 +167,15 @@ func NewTitleLogo() *TitleLogo {
 	t.Init()
 
 	surf := sprite.NewSurfaceFromPng("title.png", true)
+
+        f := sprite.NewJRSMFont()
+        cSurf := sprite.NewSurfaceFromString(f.BuildString("(c) 2021 Patrick Devine"), true)
+	surf.Blit(cSurf, 22, 25)
+
 	t.BlockCostumes = append(t.BlockCostumes, &surf)
 
-	t.RegisterEvent("resizeScreen", func() {
-		t.X = Width/2 - surf.Width/2
-	})
+	t.X = Width/2 - surf.Width/2
+	t.Y = 16
 
 	t.RegisterEvent("SelectorClicked", func() {
 		t.Visible = false
@@ -222,17 +233,13 @@ func NewTitleBomb() *TitleBomb {
 
 	surf := sprite.NewSurfaceFromPng("bomb.png", true)
 	b.BlockCostumes = append(b.BlockCostumes, &surf)
+	b.X = Width/2 - surf.Width/2 - 44
 
 	for cnt := 0; cnt < 15; cnt++ {
 		s := NewSpark()
 		b.Sparks = append(b.Sparks, s)
 		allSprites.Sprites = append(allSprites.Sprites, s)
 	}
-
-
-	b.RegisterEvent("resizeScreen", func() {
-		b.X = Width/2 - surf.Width/2 - 44
-	})
 
 	b.RegisterEvent("SelectorClicked", func() {
 		b.Visible = false
@@ -251,3 +258,27 @@ func (b *TitleBomb) Update() {
 		s.Yoffset = b.Y
 	}
 }
+
+func NewAdjustText() *AdjustText {
+	a := &AdjustText{BaseSprite: sprite.BaseSprite{
+		Visible: false},
+	}
+	a.Init()
+
+	f := sprite.NewPakuFont()
+	surf := sprite.NewSurfaceFromString(f.BuildString("your terminal, too small"), false)
+	a.BlockCostumes = append(a.BlockCostumes, &surf)
+	a.SetCostume(0)
+
+	a.RegisterEvent("resizeScreen", func() {
+		a.X = Width/2 - surf.Width/2
+		a.Y = Height/2 - surf.Height/2
+		if Width < 40 || Height < 20 {
+			a.Visible = true
+		} else {
+			a.Visible = false
+		}
+	})
+	return a
+}
+
