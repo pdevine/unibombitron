@@ -4,6 +4,9 @@
 
 A Minesweeper clone, built to work in your terminal.
 
+![](pics/bombitron-title.png)
+![](pics/bombitron-game.png)
+
 Run on kubernetes:
 
 `kubectl run -it --rm --image=ghcr.io/pdevine/bombitron bombitron`
