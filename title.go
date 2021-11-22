@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"math"
 	"math/rand"
 
@@ -11,10 +12,17 @@ type TitleOverlay struct {
 	Selectors []*Selector
 	Logo      *TitleLogo
 	Bomb      *TitleBomb
+	Uni       *UniLogo
 }
 
 type TitleLogo struct {
 	sprite.BaseSprite
+}
+
+type UniLogo struct {
+	sprite.BaseSprite
+	Timer   int
+	TimeOut int
 }
 
 type AdjustText struct {
@@ -63,10 +71,12 @@ func (t *TitleOverlay) SetGameReady() {
 		NewSelector("hard"),
 	}
 	t.Logo = NewTitleLogo()
-	t.Bomb =  NewTitleBomb()
+	t.Bomb = NewTitleBomb()
+	t.Uni = NewUniLogo()
 
 	allSprites.Sprites = append(allSprites.Sprites, t.Logo)
 	allSprites.Sprites = append(allSprites.Sprites, t.Bomb)
+	allSprites.Sprites = append(allSprites.Sprites, t.Uni)
 
 	for _, s := range t.Selectors {
 		allSprites.Sprites = append(allSprites.Sprites, s)
@@ -75,6 +85,7 @@ func (t *TitleOverlay) SetGameReady() {
 
 func (t *TitleOverlay) MoveToTop() {
 	allSprites.MoveToTop(t.Logo)
+	allSprites.MoveToTop(t.Uni)
 	allSprites.MoveToTop(t.Bomb)
 	for _, s := range t.Selectors {
 		allSprites.MoveToTop(s)
@@ -168,8 +179,8 @@ func NewTitleLogo() *TitleLogo {
 
 	surf := sprite.NewSurfaceFromPng("title.png", true)
 
-        f := sprite.NewJRSMFont()
-        cSurf := sprite.NewSurfaceFromString(f.BuildString("(c) 2021 Patrick Devine"), true)
+	f := sprite.NewJRSMFont()
+	cSurf := sprite.NewSurfaceFromString(f.BuildString("(c) 2021 Patrick Devine"), true)
 	surf.Blit(cSurf, 22, 25)
 
 	t.BlockCostumes = append(t.BlockCostumes, &surf)
@@ -182,6 +193,40 @@ func NewTitleLogo() *TitleLogo {
 	})
 
 	return t
+}
+
+func NewUniLogo() *UniLogo {
+	u := &UniLogo{BaseSprite: sprite.BaseSprite{
+		Y:       10,
+		Visible: true},
+		TimeOut: 2,
+	}
+	u.X = Width/2 - 84
+	u.Init()
+
+	r := image.Rect(0, 0, 28, 15)
+	surfs := sprite.NewSurfacesFromPngSheet("uni.png", r, true)
+
+	for cnt := 0; cnt < len(surfs); cnt++ {
+		u.BlockCostumes = append(u.BlockCostumes, &surfs[cnt])
+	}
+	u.SetCostume(0)
+
+	u.RegisterEvent("SelectorClicked", func() {
+		u.Visible = false
+	})
+	return u
+}
+
+func (u *UniLogo) Update() {
+	if u.CurrentCostume == len(u.BlockCostumes)-1 {
+		return
+	}
+	if u.Timer >= u.TimeOut {
+		u.NextCostume()
+		u.Timer = 0
+	}
+	u.Timer++
 }
 
 func NewSpark() *Spark {
@@ -227,7 +272,7 @@ func NewTitleBomb() *TitleBomb {
 		Y:       -30,
 		Visible: true},
 		TargetY: 19,
-		Sparks: []*Spark{},
+		Sparks:  []*Spark{},
 	}
 	b.Init()
 
@@ -281,4 +326,3 @@ func NewAdjustText() *AdjustText {
 	})
 	return a
 }
-

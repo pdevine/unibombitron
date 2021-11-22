@@ -166,6 +166,10 @@ func NewSuperText() *SuperText {
 	surf := sprite.NewSurfaceFromPng("super.png", true)
 	s.BlockCostumes = append(s.BlockCostumes, &surf)
 
+	s.X = Width/2 - surf.Width/2
+	s.Y = -s.Height
+	s.TargetY = Height/2 - surf.Height/2
+
 	s.RegisterEvent("resizeScreen", func() {
 		s.X = Width/2 - surf.Width/2
 		s.Y = -s.Height
@@ -201,6 +205,8 @@ func NewKaboom() *Kaboom {
 	k.BlockCostumes = append(k.BlockCostumes, &surf1)
 	surf2 := sprite.NewSurfaceFromPng("kaboom.png", true)
 	k.BlockCostumes = append(k.BlockCostumes, &surf2)
+	k.X = Width/2 - surf1.Width/2
+	k.Y = Height/2 - surf1.Height/2
 
 	k.RegisterEvent("Explode", func() {
 		allSprites.MoveToTop(k)
