@@ -115,29 +115,33 @@ func NewSelector(n string) *Selector {
 	f := sprite.NewPakuFont()
 	w := sprite.NewSurfaceFromString(f.BuildString(n), false)
 
-	surf := sprite.NewSurface(40, 10, false)
-	for rcnt, r := range surf.Blocks {
+	surf1 := sprite.NewSurface(40, 10, false)
+	surf2 := sprite.NewSurface(40, 10, false)
+	for rcnt, r := range surf1.Blocks {
 		for ccnt, _ := range r {
-			surf.Blocks[rcnt][ccnt] = 'w'
+			surf1.Blocks[rcnt][ccnt] = 'l'
+			surf2.Blocks[rcnt][ccnt] = 'w'
 		}
 	}
-	surf.Rectangle(1, 1, 39, 9, 'X')
-	surf.Blit(w, surf.Width/2-w.Width/2, 2)
-	s.BlockCostumes = []*sprite.Surface{&surf}
+	surf1.Rectangle(0, 0, 39, 9, 'X')
+	surf2.Rectangle(0, 0, 39, 9, 'X')
+	surf1.Blit(w, surf1.Width/2-w.Width/2, 2)
+	surf2.Blit(w, surf2.Width/2-w.Width/2, 2)
+	s.BlockCostumes = []*sprite.Surface{&surf1, &surf2}
 	s.SetCostume(0)
 
 	if n == "easy" {
 		s.TargetX = 10
-		s.X = -surf.Width
+		s.X = -surf1.Width
 		s.Y = Height - 20
 		s.BombRate = EASY_BOMB_RATE
 	} else if n == "med." {
-		s.X = Width/2 - surf.Width/2
+		s.X = Width/2 - surf1.Width/2
 		s.Y = Height + 10
 		s.TargetY = Height - 21
 		s.BombRate = MEDIUM_BOMB_RATE
 	} else if n == "hard" {
-		s.TargetX = Width - surf.Width - 10
+		s.TargetX = Width - surf1.Width - 10
 		s.X = Width
 		s.Y = Height - 20
 		s.BombRate = HARD_BOMB_RATE
@@ -145,6 +149,14 @@ func NewSelector(n string) *Selector {
 
 	s.RegisterEvent("SelectorClicked", func() {
 		s.Visible = false
+	})
+
+	s.RegisterEvent("MouseMove", func() {
+		if MouseX >= s.X && MouseX < s.X+surf1.Width && MouseY >= s.Y && MouseY < s.Y+surf1.Height {
+			s.SetCostume(1)
+		} else {
+			s.SetCostume(0)
+		}
 	})
 
 	return s

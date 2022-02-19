@@ -42,6 +42,7 @@ func setPalette() {
 	sprite.ColorMap['X'] = tm.ColorBlack
 	sprite.ColorMap['b'] = tm.ColorBlue
 	sprite.ColorMap['x'] = tm.Color187
+	sprite.ColorMap['l'] = tm.Color254
 }
 
 func main() {
@@ -132,6 +133,10 @@ mainloop:
 							t.SetFlag()
 							gameGrid.CheckGameOver()
 						}
+					}
+				} else if ev.Key == tm.MouseRelease {
+					if gameGrid.State == GAME_READY {
+						allSprites.TriggerEvent("MouseMove")
 					}
 				}
 			} else if ev.Type == tm.EventResize {
